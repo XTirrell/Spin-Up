@@ -1,1 +1,443 @@
+#include "main.h"
+#include "pros/misc.h"
+#include "ControlSystem.h"
+#include "XDrive.h"
+#include <string>
 
+pros::Controller primary(pros::E_CONTROLLER_MASTER);
+pros::Controller secondary(pros::E_CONTROLLER_PARTNER);
+ControlSystem controlSystem(&primary, &secondary);
+
+//DON'T USE PORT 19
+pros::Motor frontLeft(12, false);
+pros::Motor frontRight(6, true);
+pros::Motor backLeft(20, false);
+pros::Motor backRight(5, true);
+pros::Motor roller(1, true);
+pros::Motor flyWheel(11, false);
+pros::Motor intake(2, true);
+pros::Motor vertical(10, true);
+
+pros::ADIDigitalOut Expansion('H', false);
+pros::ADIDigitalOut indexer('A', false);
+
+XDrive drive(&frontLeft, &frontRight, &backLeft, &backRight);
+
+int autonSelection = 0;
+
+/**
+ * Prints controller stats to the controller
+ */
+void controllerStats()
+{
+	using namespace std;
+	using namespace pros;
+	uint32_t lastTime = pros::millis();
+
+	while (true)
+	{
+		controlSystem.controllersClear();
+		controlSystem.printControllerCompStats(); // Prints primary ("P"), secondary ("S"), and brain ("B") battery level
+
+		string temps = std::string("Fly: ") + std::to_string(flyWheel.get_temperature()) + std::string(" *C");
+		controlSystem.controllersPrint(1, 0, temps.c_str());
+
+		string tmp = "";
+
+		// Competition Status
+		if (competition::is_connected())
+		{
+			if (competition::is_autonomous())
+				tmp = "A"; // "Auto"
+			else
+				tmp = "D"; // "Driver"
+
+			if (competition::is_disabled())
+				tmp += "D"; // "Disabled"
+			else
+				tmp += "E"; // "Enabled"
+		}
+		else
+			tmp = "NC"; // "Not Connected"
+
+		printf("Autonomous Selection: %d\n", autonSelection);
+
+		// Auton Selection
+		if (autonSelection == 0)
+			tmp += " Left";
+		else if (autonSelection == 1)
+			tmp += " Right";
+		else if (autonSelection == 2)
+			tmp += " Skills";
+		else
+			tmp += " None";
+
+		controlSystem.controllersPrint(2, 0, tmp.c_str());
+		Task::delay_until(&lastTime, 200);
+	}
+}
+
+void selectModes()
+{
+	autonSelection = controlSystem.selectionScreen("Auton:", {"Left", "Right", "Skills", "None"});
+	printf("Selection Autonomous: %d\n", autonSelection);
+	controlSystem.controllersClear();
+	pros::Task controllerStatsTask(controllerStats, "Controller Stats");
+}
+
+void initialize()
+{
+	Expansion.set_value(false);
+	indexer.set_value(false);
+	pros::Task selectionTask(selectModes, "Selection"); // Run selection screen
+}
+
+/**
+ * the VEX Competition Switch, following either autonomous or opcontrol. When
+ * the robot is enabled, this task will exit.
+ */
+void disabled() {}
+
+/**
+ * Runs after initialize(), and before autonomous when connected to the Field
+ * Management System or the VEX Competition Switch. This is intended for
+ * competition-specific initialization routines, such as an autonomous selector
+ * on the LCD.
+ *
+ * This task will exit when the robot is enabled and autonomous or opcontrol
+ * starts.
+ */
+void competition_initialize() {}
+
+void rightAuton()
+{
+	//Drive Left
+	//frontLeft.move_relative(-450 * 10, 70);
+	//frontRight.move_relative(450 * 10, 70);
+	//backLeft.move_relative(450 * 10, 70);
+	//backRight.move_relative(-450 * 10, 70);
+	
+	//frontLeft.move_relative(900, 70);
+	//frontRight.move_relative(-900, 70);
+	//backLeft.move_relative(-900, 70);
+	//backRight.move_relative(900, 70);
+	
+	//printf("Moving left\n");
+	drive.drive(0, -1500, 70, 2000, 15);
+
+	//forward 
+	//frontLeft.move_relative(90 * 10, 70);
+	//frontRight.move_relative(90 * 10, 70);
+	//backLeft.move_relative(90 * 10, 70);
+	//backRight.move_relative(90 * 10, 70);
+	
+	//printf("Moving forward\n");
+	drive.drive(900, 0, 70, 1000, 15);
+
+	//roller
+	pros::delay(100);
+	roller.move_relative(-45 * 10, 80);
+	pros::delay(100);
+
+	//back
+	//frontLeft.move_relative(-180 * 10, 70);
+	//frontRight.move_relative(-180 * 10, 70);
+	//backLeft.move_relative(-180 * 10, 70);
+	//backRight.move_relative(-180 * 10, 70);
+	drive.drive(-225, 0, 70, 1000, 15);
+
+	//flywheel
+	flyWheel.move(90);
+
+	//wait for flywheel to spin up 
+	pros::delay(100);
+
+	//turn
+	//frontLeft.move_relative(-360 * 10, 70);
+	//frontRight.move_relative(360 * 10, 70);
+	//backLeft.move_relative(-360 * 10, 70);
+	//backRight.move_relative(360 * 10, 70);
+	drive.turn(90, 70, 1000, 15);
+
+	//shoot
+	for(int i = 0; i<=1; i++) 
+	{
+		pros::delay(100);
+		indexer.set_value(true);
+		pros::delay(10);
+		indexer.set_value(false);
+	}
+}
+
+void leftAuton()
+{
+	//forward 
+	//frontLeft.move_relative(90 * 10, 70);
+	//frontRight.move_relative(90 * 10, 70);
+	//backLeft.move_relative(90 * 10, 70);
+	//backRight.move_relative(90 * 10, 70);
+	drive.drive(900, 0, 70, 1000, 15);
+
+	//roller
+	pros::delay(100);
+	roller.move_relative(-45 * 10, 80);
+	pros::delay(100);
+
+	//back
+	//frontLeft.move_relative(-180 * 10, 70);
+	//frontRight.move_relative(-180 * 10, 70);
+	//backLeft.move_relative(-180 * 10, 70);
+	//backRight.move_relative(-180 * 10, 70);
+	drive.drive(-225, 0, 70, 1000, 15);
+
+	//flywheel
+	flyWheel.move(90);
+
+	//turn
+	//frontLeft.move_relative(360 * 10, 70);
+	//frontRight.move_relative(-360 * 10, 70);
+	//backLeft.move_relative(360 * 10, 70);
+	//backRight.move_relative(-360 * 10, 70);
+	drive.turn(-145, 70, 1000, 15);
+
+	//wait for flywheel to spin up 
+	pros::delay(100);
+
+	//shoot
+		indexer.set_value(true);
+		pros::delay(10);
+		indexer.set_value(false);
+		pros::delay(100);
+		indexer.set_value(true);
+		pros::delay(10);
+		indexer.set_value(false);
+	/*
+	for(int i = 0; i<=1; i++) 
+	{
+		indexer.set_value(true);
+		pros::delay(10);
+		indexer.set_value(false);
+	}
+	*/
+}
+
+void skillsAuton()
+{
+	//run left auton 
+	drive.drive(900, 0, 70, 1000, 15);
+	pros::delay(1000);
+	roller.move_relative(-45 * 10, 80);
+	drive.drive(-225, 0, 70, 1000, 15);
+	flyWheel.move(90);
+	drive.turn(-145, 70, 1000, 15);
+	pros::delay(1000);
+	indexer.set_value(true);
+	pros::delay(10);
+	indexer.set_value(false);
+	pros::delay(100);
+	indexer.set_value(true);
+	pros::delay(10);
+	indexer.set_value(false);
+
+	//prepare to lauch expansion 
+	drive.turn(360, 0, 70, 1000);
+
+	//launch expansion 
+	Expansion.set_value(true);
+
+	// Move robot forward and turn the roller
+	/*
+	frontLeft.move_relative(90 * 10, 70);
+	frontRight.move_relative(90 * 10, 70);
+	backLeft.move_relative(90 * 10, 70);
+	backRight.move_relative(90 * 10, 70);
+
+	pros::delay(1000);
+	roller.move_relative(-30 * 10, 80);	
+	*/
+}
+/**
+ * Runs the user autonomous code. This function will be started in its own task
+ * with the default priority and stack size whenever the robot is enabled via
+ * the Field Management System or the VEX Competition Switch in the autonomous
+ * mode. Alternatively, this function may be called in initialize or opcontrol
+ * for non-competition testing purposes.
+ *
+ * If the robot is disabled or communications is lost, the autonomous task
+ * will be stopped. Re-enabling the robot will restart the task, not re-start it
+ * from where it left off.
+ */
+
+void autonomous() {
+	switch (autonSelection)
+	{
+	case 0: // Left
+		printf("Doing left auton\n");
+		leftAuton();
+		break;
+
+	case 1: // Right
+		printf("Doing right auton\n");
+		rightAuton();
+		break;
+
+	case 2: // Skills
+		printf("Doing skills auton\n");
+		skillsAuton();
+		break;
+
+	case 3: // None
+	default:
+		printf("Doing no auton\n");
+		break;
+	}
+
+/*
+//Old Autonomous
+	// Move robot forward and turn the roller
+
+	frontLeft.move_relative(90 * 10, 70);
+	frontRight.move_relative(90 * 10, 70);
+	backLeft.move_relative(90 * 10, 70);
+	backRight.move_relative(90 * 10, 70);
+
+	pros::delay(1000);
+	roller.move_relative(-45 * 10, 80);	
+*/
+}
+
+/**
+ * Runs the operator control code. This function will be started in its own task
+ * with the default priority and stack size whenever the robot is enabled via
+ * the Field Management System or the VEX Competition Switch in the operator
+ * control mode.
+ *
+ * If no competition control is connected, this function will run immediately
+ * following initialize().
+ *
+ * If the robot is disabled or communications is lost, the
+ * operator control task will be stopped. Re-enabling the robot will restart the
+ * task, not resume it from where it left off.
+ */
+
+void opcontrol() {
+
+	// Keep track of the time when driver control started:
+	
+	uint32_t startTime = pros::millis();
+	bool warningVibration = false;
+
+	// Keep track of wether the expansion is out or not:
+	bool ExpansionOn = false;
+
+	primary.clear();
+
+	while (true) {		
+	// QTime okapi::Timer::millis() const 
+
+
+		// When there is 10 seconds left (after 1 minute 35 seconds), vibrate the controller
+		
+		if (((pros::millis() - startTime) > (60 * 1000 + 35 * 1000)) && !warningVibration)
+		{
+			primary.rumble("_._");
+			secondary.rumble("_._");
+			warningVibration = true;
+		}
+
+		// Drive
+		// Right stick controls for turning
+		// Left stick controls for moving
+		int forwardValue = primary.get_analog(ANALOG_LEFT_Y);
+		int rightValue = primary.get_analog(ANALOG_LEFT_X);
+		int turnValue = primary.get_analog(ANALOG_RIGHT_X);
+
+		int rollerSpeed = secondary.get_analog(ANALOG_RIGHT_Y);
+		int flywheelSpeed = secondary.get_analog(ANALOG_LEFT_Y);
+
+		//Create "Dead zones" 
+		if (abs(forwardValue) < 10)
+			forwardValue = 0;
+		
+		if (abs(rightValue) < 10)
+			rightValue = 0;
+
+		if (abs(turnValue) < 10)
+			turnValue = 0;
+		
+		if (abs(rollerSpeed) < 10)
+			rollerSpeed = 0;
+
+		if (abs(flywheelSpeed) < 10)
+			flywheelSpeed = 0;
+
+		//frontLeft.move(forwardValue + rightValue + turnValue);
+		//frontRight.move(forwardValue - rightValue - turnValue);
+		//backLeft.move(forwardValue - rightValue + turnValue);
+		//backRight.move(forwardValue + rightValue - turnValue);
+		drive.setSpeeds(forwardValue, rightValue, turnValue);
+
+		// Roller
+		if (primary.get_digital(DIGITAL_R1))
+		{
+			roller.move(80);
+		}
+		else if (primary.get_digital(DIGITAL_L1))
+		{
+			roller.move(-80);
+		}
+		else
+		{
+			roller.move(rollerSpeed);
+		}
+
+			//Vertical Expantion 
+		if (secondary.get_digital(DIGITAL_R1) || primary.get_digital(DIGITAL_X))
+		{
+			vertical.move(50);
+		}
+		else if (secondary.get_digital(DIGITAL_L1) || primary.get_digital(DIGITAL_B))
+		{
+			vertical.move(-50);
+		}
+		else
+		{
+			vertical.move(0);
+		}
+
+			//Flywheel
+		if (secondary.get_digital(DIGITAL_UP) || primary.get_digital(DIGITAL_L2)) {
+			flyWheel.move(75);
+		}
+		else if (secondary.get_digital(DIGITAL_DOWN)) {
+			flyWheel.move(90);
+		}
+		else {
+			flyWheel.move(flywheelSpeed);
+		}
+
+			// Intake 
+		if (secondary.get_digital(DIGITAL_R2) || primary.get_digital(DIGITAL_Y)) {
+			intake.move(50);
+		}
+		else if (secondary.get_digital(DIGITAL_L2) || primary.get_digital(DIGITAL_A)) {
+			intake.move(-50);
+		}
+		else {
+			intake.move(0);
+		}
+
+		// Hold action: move indexer forward when button held, move indexer back when button released
+		indexer.set_value(!(primary.get_digital(DIGITAL_R2)));
+
+		// Toggle expansion
+		
+		if (primary.get_digital_new_press(DIGITAL_UP))
+		{
+			ExpansionOn = !ExpansionOn;
+			Expansion.set_value(ExpansionOn);
+		}
+
+		pros::delay(20);
+	}
+}
