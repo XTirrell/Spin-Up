@@ -1,0 +1,61 @@
+#include "XDrive.h"
+
+void XDrive::setSpeeds(const int forward, const int right, const int turn) {
+	frontLeft->move(forward + right + turn);
+	frontRight->move(forward - right - turn);
+	backLeft->move(forward - right + turn);
+	backRight->move(forward + right - turn);
+}
+
+void XDrive::drive(const int forward, const int right, const int speed, const int timeout, const int tolerance) {
+	//printf("Driving: forward: %d, right: %d, speed: %d, timeout: %d, tolerance: %d\n", forward, right, speed, timeout, tolerance);
+
+	frontLeft->move_relative(forward + right, speed);
+	frontRight->move_relative(forward - right, speed);
+	backLeft->move_relative(forward - right, speed);
+	backRight->move_relative(forward + right, speed);
+/*
+	printf("FrontLeft Position: %f\n", frontLeft->get_position());
+	printf("FrontLeft Target: %f\n", frontLeft->get_target_position());
+	printf("FrontRight Position: %f\n", frontRight->get_position());
+	printf("FrontRight Target: %f\n", frontRight->get_target_position());
+	printf("BackLeft Position: %f\n", backLeft->get_position());
+	printf("BackLeft Target: %f\n", backLeft->get_target_position());
+	printf("BackRight Position: %f\n", backRight->get_position());
+	printf("BackRight Target: %f\n", backRight->get_target_position());
+	printf("\n");
+*/
+	waitForTarget(tolerance, timeout);
+}
+
+void XDrive::turn(const int degrees, const int speed, const int timeout, const int tolerance) {
+	frontLeft->move_relative(degrees, speed);
+	frontRight->move_relative(-degrees, speed);
+	backLeft->move_relative(degrees, speed);
+	backRight->move_relative(-degrees, speed);
+
+	waitForTarget(tolerance, timeout);
+}
+
+int XDrive::distanceToTarget() {
+	return fabs(frontLeft->get_target_position() - frontLeft->get_position()) +
+		fabs(frontRight->get_target_position() - frontRight->get_position()) +
+		fabs(backLeft->get_target_position() - backLeft->get_position()) +
+		fabs(backRight->get_target_position() - backRight->get_position());
+}
+
+void XDrive::waitForTarget(const int tolerance, const int timeout) {
+	const uint32_t startTime = pros::millis();
+	//printf("Waiting for target... \n");
+	//printf("Start time: %u\n", startTime);
+
+	while (abs(distanceToTarget()) > tolerance) {
+		if (timeout != -1 && pros::millis() - startTime > timeout)
+			break;
+
+		pros::delay(10);
+	}
+
+	//printf("Target reached with distance: %d\n", distanceToTarget());
+	//printf("End time: %u\n", pros::millis());
+}
